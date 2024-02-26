@@ -1,5 +1,7 @@
 from ollama import AsyncClient
+import ollama
 import chainlit as cl
+
 
 # Document Loaders
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
@@ -23,28 +25,39 @@ def process_file(file):
         with open(file.path, 'rb') as f:
             file_content = f.read()
             # Decode the binary content to a string
-            return file_content.decode('utf-8')
-    # elif file.mime == "application/pdf":
-    #     Loader = PyPDFLoader
+            return [file_content.decode('utf-8')]
+    elif file.mime == "application/pdf":
+        Loader = PyPDFLoader
+
+        loader = Loader(file.path)
+        pages = loader.load_and_split(text_splitter)
+
+        return [page.page_content for page in pages]
     else:
-        return None
+        return []
 
 
 @cl.on_message
 async def main(message: cl.Message):
     # Files are attached in the message object and can be accessed using message.elements
     print(message.elements)
+    print(message.content)
+    embeddings = ollama.embeddings(model="mistral", prompt=message.content)
+    print(len(embeddings['embedding']))
+
     message_history = cl.user_session.get("message_history")
-    message_history.append({"role": "user", "content": message.content})
 
     if message.elements:
-
         for file in message.elements:
+            # TODO - this doesn't work yet, might have to use embeddings
             file_content = process_file(file)
-            print(file_content)
+
             if file_content:
-                message_history.append(
-                    {"role": "user", "content": f"File Content: {file_content}"})
+                for content in file_content:
+                    message_history.append(
+                        {"role": "user", "content": f"File Content: {content}"})
+
+    message_history.append({"role": "user", "content": message.content})
 
     msg = cl.Message(content="")
     await msg.send()
