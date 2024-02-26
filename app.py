@@ -12,6 +12,7 @@ def start_chat():
 
 @cl.on_message
 async def main(message: cl.Message):
+
     message_history = cl.user_session.get("message_history")
     message_history.append({"role": "user", "content": message.content})
 
