@@ -1,4 +1,3 @@
-import asyncio
 from ollama import AsyncClient
 import chainlit as cl
 
