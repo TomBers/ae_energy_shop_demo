@@ -65,7 +65,7 @@ custom_css = "/public/style.css"
 
 # Specify a Javascript file that can be used to customize the user interface.
 # The Javascript file can be served from the public directory.
-# custom_js = "/public/run.js"
+custom_js = "/public/run.js"
 
 # Specify a custom font url.
 custom_font = "https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"

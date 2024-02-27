@@ -2,6 +2,11 @@ from ollama import AsyncClient
 import ollama
 import chainlit as cl
 
+from chainlit.server import app
+from fastapi import Request
+from fastapi.responses import (
+    HTMLResponse,
+)
 
 # Document Loaders
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
@@ -9,6 +14,11 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=1000, chunk_overlap=100)
+
+
+@app.get("/hello")
+def hello(request: Request):
+    return HTMLResponse("Hello World")
 
 
 @cl.on_chat_start
