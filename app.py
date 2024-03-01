@@ -31,18 +31,19 @@ if index_name not in pc.list_indexes().names():
         )
     )
 
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=5000, chunk_overlap=200)
+# text_splitter = RecursiveCharacterTextSplitter(
+#     chunk_size=5000, chunk_overlap=200)
 embeddings = OpenAIEmbeddings()
 
 namespaces = set()
 
 
+# TODO - Test other PDF Loaders to see if they work any better
 def process_file(file: AskFileResponse):
 
     loader = PyPDFLoader(file.path)
-    documents = loader.load()
-    docs = text_splitter.split_documents(documents)
+
+    docs = loader.load_and_split()
     for i, doc in enumerate(docs):
         doc.metadata["source"] = f"source_{i}"
     return docs
