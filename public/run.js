@@ -1,56 +1,39 @@
-const menuDiv = '.MuiStack-root.css-1mzerio';
-const links = [{ link: '/hello', text: 'Hello' }];
-const timeOut = 300;
+function openNav() {
+    document.getElementById("myNav").style.width = "100%";
+}
+
+/* Close when someone clicks on the "x" symbol inside the overlay */
+function closeNav() {
+    document.getElementById("myNav").style.width = "0%";
+}
+
+function getFirstElement() {
+    return document.querySelector('header').nextElementSibling;
+}
 
 
 window.onload = function () {
-    findNavandUpdate();
-    addEventListenerToLinks();
 
+    var firstElement = getFirstElement();
+    console.log(firstElement);
+    // Take this html smippet and add it to the page
+    menuHtml =
+        `<div id="myNav" class="overlay">
 
-}
-
-function addEventListenerToLinks() {
-    // Attach the event listener to the document
-    document.addEventListener('click', function (e) {
-        // Check if the clicked element is an 'a' tag
-        if (e.target.tagName === 'A') {
-            findNavandUpdate();
-        }
-    });
-}
-
-function findNavandUpdate() {
-    var toolbarLinks = document.querySelector(menuDiv);
-    console.log(toolbarLinks);
-    if (toolbarLinks == null) {
-        // Add a timeout to wait for the page to load
-        setTimeout(function () {
-            toolbarLinks = document.querySelector(menuDiv);
-
-            if (toolbarLinks != null) {
-                createButtons(toolbarLinks);
-            };
-        }, timeOut);
-    } else {
-        if (toolbarLinks != null) {
-            createButtons(toolbarLinks);
-        };
-    }
-}
-
-function createButtons(toolbarLinks) {
-    links.forEach(link => {
-        if (document.getElementById(link.text) == null) {
-            createButton(toolbarLinks, link.link, link.text);
-        }
-    });
-}
-
-function createButton(toolbarLinks, link, linkText) {
-    var newLink = document.createElement('div');
-    newLink.appendChild(document.createElement('span'));
-    newLink.innerHTML = `<a class="MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-sizeMedium MuiButton-textSizeMedium MuiButton-disableElevation MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-sizeMedium MuiButton-textSizeMedium MuiButton-disableElevation css-1v8u0lj" id="${linkText}" tabindex="0" href="${link}">${linkText}</a>`;
-    toolbarLinks.appendChild(newLink);
+            <!-- Button to close the overlay navigation -->
+            <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+        
+            <!-- Overlay content -->
+            <div class="overlay-content">
+            <a href="#">About</a>
+            <a href="#">Services</a>
+            <a href="#">Clients</a>
+            <a href="#">Contact</a>
+            </div>
+        
+        </div>`;
+    buttonHtml = `<span onclick="openNav()" class="menuBtn">☰ open</span>`;
+    firstElement.insertAdjacentHTML('beforebegin', buttonHtml);
+    firstElement.insertAdjacentHTML('beforebegin', menuHtml);
 }
 
