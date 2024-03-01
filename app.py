@@ -1,80 +1,147 @@
-from ollama import AsyncClient
-import ollama
-import chainlit as cl
+import os
+from typing import List
+from langchain.document_loaders import PyPDFLoader, TextLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.vectorstores.pinecone import Pinecone as PineconeVectorStore
+from langchain.chains import ConversationalRetrievalChain
+from langchain.chat_models import ChatOpenAI
+from langchain.memory import ChatMessageHistory, ConversationBufferMemory
+from langchain.docstore.document import Document
 
-from chainlit.server import app
-from fastapi import Request
-from fastapi.responses import (
-    HTMLResponse,
+from pinecone import Pinecone, ServerlessSpec
+
+from packages.credilyst.credilyst import welcome_message, system_prompt, index_name
+
+import chainlit as cl
+from chainlit.types import AskFileResponse
+
+pc = Pinecone(
+    api_key=os.environ.get("PINECONE_API_KEY")
 )
 
-# Document Loaders
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+if index_name not in pc.list_indexes().names():
+    pc.create_index(
+        name=index_name,
+        dimension=1536,
+        metric='euclidean',
+        spec=ServerlessSpec(
+            cloud='aws',
+            region='us-west-2'
+        )
+    )
 
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000, chunk_overlap=100)
+    chunk_size=5000, chunk_overlap=200)
+embeddings = OpenAIEmbeddings()
+
+namespaces = set()
 
 
-@app.get("/hello")
-def hello(request: Request):
-    return HTMLResponse("Hello World")
+def process_file(file: AskFileResponse):
+
+    loader = PyPDFLoader(file.path)
+    documents = loader.load()
+    docs = text_splitter.split_documents(documents)
+    for i, doc in enumerate(docs):
+        doc.metadata["source"] = f"source_{i}"
+    return docs
+
+
+def get_docsearch(file: AskFileResponse):
+    docs = process_file(file)
+
+    # Save data in the user session
+    cl.user_session.set("docs", docs)
+
+    # Create a unique namespace for the file
+    namespace = file.id
+
+    if namespace in namespaces:
+        docsearch = PineconeVectorStore.from_existing_index(
+            index_name=index_name, embedding=embeddings, namespace=namespace
+        )
+    else:
+        docsearch = PineconeVectorStore.from_documents(
+            docs, embeddings, index_name=index_name, namespace=namespace
+        )
+        namespaces.add(namespace)
+
+    return docsearch
 
 
 @cl.on_chat_start
-def start_chat():
+async def start():
+
     cl.user_session.set(
         "message_history",
-        [{"role": "system", "content": "You are a helpful assistant."}],
+        [{"role": "system", "content": system_prompt}],
     )
 
+    files = None
+    while files is None:
+        files = await cl.AskFileMessage(
+            content=welcome_message,
+            accept=["application/pdf"],
+            max_size_mb=20,
+            timeout=180,
+        ).send()
 
-# TODO - Get File Loader tools working
-def process_file(file):
-    if file.mime == "text/plain":
-        with open(file.path, 'rb') as f:
-            file_content = f.read()
-            # Decode the binary content to a string
-            return [file_content.decode('utf-8')]
-    elif file.mime == "application/pdf":
-        Loader = PyPDFLoader
+    file = files[0]
 
-        loader = Loader(file.path)
-        pages = loader.load_and_split(text_splitter)
+    msg = cl.Message(content=f"Processing `{
+                     file.name}`", disable_feedback=True)
+    await msg.send()
 
-        return [page.page_content for page in pages]
-    else:
-        return []
+    docsearch = await cl.make_async(get_docsearch)(file)
+
+    message_history = ChatMessageHistory()
+
+    memory = ConversationBufferMemory(
+        memory_key="chat_history",
+        output_key="answer",
+        chat_memory=message_history,
+        return_messages=True,
+    )
+
+    chain = ConversationalRetrievalChain.from_llm(
+        ChatOpenAI(model_name="gpt-3.5-turbo",
+                   temperature=0, streaming=True),
+        chain_type="stuff",
+        retriever=docsearch.as_retriever(),
+        memory=memory,
+        return_source_documents=True,
+    )
+
+    # Let the user know that the system is ready
+    msg.content = f"`{file.name}` processed. You can now ask questions!"
+    await msg.update()
+
+    cl.user_session.set("chain", chain)
 
 
 @cl.on_message
 async def main(message: cl.Message):
-    # Files are attached in the message object and can be accessed using message.elements
-    print(message.elements)
-    print(message.content)
-    embeddings = ollama.embeddings(model="mistral", prompt=message.content)
-    print(len(embeddings['embedding']))
+    chain = cl.user_session.get("chain")  # type: ConversationalRetrievalChain
+    cb = cl.AsyncLangchainCallbackHandler()
+    res = await chain.acall(message.content, callbacks=[cb])
+    answer = res["answer"]
+    source_documents = res["source_documents"]  # type: List[Document]
 
-    message_history = cl.user_session.get("message_history")
+    text_elements = []  # type: List[cl.Text]
 
-    if message.elements:
-        for file in message.elements:
-            # TODO - this doesn't work yet, might have to use embeddings
-            file_content = process_file(file)
+    if source_documents:
+        for source_idx, source_doc in enumerate(source_documents):
+            source_name = f"source_{source_idx}"
+            # Create the text element referenced in the message
+            text_elements.append(
+                cl.Text(content=source_doc.page_content, name=source_name)
+            )
+        source_names = [text_el.name for text_el in text_elements]
 
-            if file_content:
-                for content in file_content:
-                    message_history.append(
-                        {"role": "user", "content": f"File Content: {content}"})
+        if source_names:
+            answer += f"\nSources: {', '.join(source_names)}"
+        else:
+            answer += "\nNo sources found"
 
-    message_history.append({"role": "user", "content": message.content})
-
-    msg = cl.Message(content="")
-    await msg.send()
-
-    async for part in await AsyncClient().chat(model='mistral', messages=message_history, stream=True):
-        if token := part['message']['content'] or "":
-            await msg.stream_token(token)
-
-    message_history.append({"role": "assistant", "content": msg.content})
-    await msg.update()
+    await cl.Message(content=answer, elements=text_elements).send()
