@@ -7,33 +7,40 @@ function closeNav() {
     document.getElementById("myNav").style.width = "0%";
 }
 
-function getFirstElement() {
-    return document.querySelector('header').nextElementSibling;
+function addTheMenu(addMenuToFn) {
+    const header = document.querySelector('header');
+    if (header) {
+        addMenuToFn(header.nextElementSibling);
+    } else {
+        setTimeout(() => {
+            addTheMenu(addMenuToFn);
+        }, 200);
+    }
+}
+
+function addMenuTo(element) {
+    menuHtml =
+        `<div id="myNav" class="overlay">
+
+        <!-- Button to close the overlay navigation -->
+        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+    
+        <!-- Overlay content -->
+        <div class="overlay-content">
+        <a href="#">About</a>
+        <a href="#">Services</a>
+        <a href="#">Clients</a>
+        <a href="#">Contact</a>
+        </div>
+    
+    </div>`;
+    buttonHtml = `<span onclick="openNav()" class="menuBtn">☰ open</span>`;
+    element.insertAdjacentHTML('beforebegin', buttonHtml);
+    element.insertAdjacentHTML('beforebegin', menuHtml);
 }
 
 
 window.onload = function () {
-
-    var firstElement = getFirstElement();
-    console.log(firstElement);
-    // Take this html smippet and add it to the page
-    menuHtml =
-        `<div id="myNav" class="overlay">
-
-            <!-- Button to close the overlay navigation -->
-            <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
-        
-            <!-- Overlay content -->
-            <div class="overlay-content">
-            <a href="#">About</a>
-            <a href="#">Services</a>
-            <a href="#">Clients</a>
-            <a href="#">Contact</a>
-            </div>
-        
-        </div>`;
-    buttonHtml = `<span onclick="openNav()" class="menuBtn">☰ open</span>`;
-    firstElement.insertAdjacentHTML('beforebegin', buttonHtml);
-    firstElement.insertAdjacentHTML('beforebegin', menuHtml);
+    addTheMenu(addMenuTo)
 }
 
