@@ -44,6 +44,10 @@ name = "Assistant Engineering"
 # Show the readme while the thread is empty.
 show_readme_as_default = true
 
+injected_tabs = [
+    { to = "http://localhost:8000/hello", label = "Hello" }
+]
+
 # Description of the app and chatbot. This is used for HTML tags.
 # description = ""
 
