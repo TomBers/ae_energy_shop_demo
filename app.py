@@ -1,24 +1,20 @@
-from ollama import AsyncClient
-import ollama
+
+import os
+from openai import AsyncOpenAI
+
+from packages.func_call.funcs import tools, call_tool
+
+from chainlit.playground.providers.openai import stringify_function_call
 import chainlit as cl
 
-from chainlit.server import app
-from fastapi import Request
-from fastapi.responses import (
-    HTMLResponse,
-)
+api_key = os.environ.get("OPENAI_API_KEY")
+client = AsyncOpenAI(api_key=api_key)
 
-# Document Loaders
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000, chunk_overlap=100)
+MAX_ITER = 5
 
 
-@app.get("/hello")
-def hello(request: Request):
-    return HTMLResponse("Hello World")
+# Example dummy function hard coded to return the same weather
+# In production, this could be your backend API or an external API
 
 
 @cl.on_chat_start
@@ -29,52 +25,60 @@ def start_chat():
     )
 
 
-# TODO - Get File Loader tools working
-def process_file(file):
-    if file.mime == "text/plain":
-        with open(file.path, 'rb') as f:
-            file_content = f.read()
-            # Decode the binary content to a string
-            return [file_content.decode('utf-8')]
-    elif file.mime == "application/pdf":
-        Loader = PyPDFLoader
+@cl.step(type="llm")
+async def call_gpt4(message_history):
+    settings = {
+        "model": "gpt-4",
+        "tools": tools,
+        "tool_choice": "auto",
+    }
 
-        loader = Loader(file.path)
-        pages = loader.load_and_split(text_splitter)
+    cl.context.current_step.generation = cl.ChatGeneration(
+        provider="openai-chat",
+        messages=[
+            cl.GenerationMessage(
+                formatted=m["content"], name=m.get("name"), role=m["role"]
+            )
+            for m in message_history
+        ],
+        settings=settings,
+    )
 
-        return [page.page_content for page in pages]
-    else:
-        return []
+    response = await client.chat.completions.create(
+        messages=message_history, **settings
+    )
+
+    message = response.choices[0].message
+
+    for tool_call in message.tool_calls or []:
+        if tool_call.type == "function":
+            await call_tool(tool_call, message_history)
+
+    if message.content:
+        cl.context.current_step.generation.completion = message.content
+        cl.context.current_step.output = message.content
+
+    elif message.tool_calls:
+        completion = stringify_function_call(message.tool_calls[0].function)
+
+        cl.context.current_step.generation.completion = completion
+        cl.context.current_step.language = "json"
+        cl.context.current_step.output = completion
+
+    return message
 
 
 @cl.on_message
-async def main(message: cl.Message):
-    # Files are attached in the message object and can be accessed using message.elements
-    print(message.elements)
-    print(message.content)
-    embeddings = ollama.embeddings(model="mistral", prompt=message.content)
-    print(len(embeddings['embedding']))
-
+async def run_conversation(message: cl.Message):
     message_history = cl.user_session.get("message_history")
-
-    if message.elements:
-        for file in message.elements:
-            # TODO - this doesn't work yet, might have to use embeddings
-            file_content = process_file(file)
-
-            if file_content:
-                for content in file_content:
-                    message_history.append(
-                        {"role": "user", "content": f"File Content: {content}"})
-
     message_history.append({"role": "user", "content": message.content})
 
-    msg = cl.Message(content="")
-    await msg.send()
+    cur_iter = 0
 
-    async for part in await AsyncClient().chat(model='mistral', messages=message_history, stream=True):
-        if token := part['message']['content'] or "":
-            await msg.stream_token(token)
+    while cur_iter < MAX_ITER:
+        message = await call_gpt4(message_history)
+        if not message.tool_calls:
+            await cl.Message(content=message.content, author="Answer").send()
+            break
 
-    message_history.append({"role": "assistant", "content": msg.content})
-    await msg.update()
+        cur_iter += 1
