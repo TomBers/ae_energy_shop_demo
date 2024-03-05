@@ -27,7 +27,7 @@ async def call_tool(tool_call, message_history):
     current_step.output = function_response
     current_step.language = "json"
 
-    message_history.append(
+    message_history.add_message(
         {
             "role": "function",
             "name": function_name,
