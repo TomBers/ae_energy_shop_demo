@@ -18,11 +18,28 @@ MAX_ITER = 5
 
 
 @cl.on_chat_start
-def start_chat():
+async def start_chat():
     cl.user_session.set(
         "message_history",
-        [{"role": "system", "content": "You are a helpful assistant."}],
+        [{"role": "system", "content": "You are a helpful assistant helping people to understand their energy bill."}],
     )
+
+    files = None
+    while files is None:
+        files = await cl.AskFileMessage(
+            content="Please upload your energy bill to get started.",
+            accept=["application/pdf"],
+            max_size_mb=20,
+            timeout=180,
+        ).send()
+
+    file = files[0]
+    msg = cl.Message(content=f"Processing `{
+        file.name}`", author="System", disable_feedback=True)
+    await msg.send()
+
+    msg.content = f"`{file.name}` processed. You can now ask questions!"
+    await msg.update()
 
 
 @cl.step(type="llm")

@@ -2,10 +2,11 @@ import ast
 import sys
 import chainlit as cl
 
-from packages.func_call.weather import get_current_weather, weather_schema
+# from packages.func_call.weather import get_current_weather, weather_schema
+from packages.func_call.energy_shop import get_tariffs, tariffs_schema
 
 tools = [
-    weather_schema(),
+    tariffs_schema(),
 ]
 
 
