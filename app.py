@@ -34,8 +34,7 @@ async def start_chat():
         ).send()
 
     file = files[0]
-    msg = cl.Message(content=f"Processing `{
-        file.name}`", author="System", disable_feedback=True)
+    msg = cl.Message(content=f"Processing `{file.name}`", author="System", disable_feedback=True)
     await msg.send()
 
     msg.content = f"`{file.name}` processed. You can now ask questions!"
