@@ -27,7 +27,7 @@ async def start_chat():
     files = None
     while files is None:
         files = await cl.AskFileMessage(
-            content="Please upload your energy bill to get started.",
+            content="Please upload your energy bill to get started. We can compare your bill to other tariffs",
             accept=["application/pdf"],
             max_size_mb=20,
             timeout=180,
@@ -45,7 +45,7 @@ async def start_chat():
 @cl.step(type="llm")
 async def call_gpt4(message_history):
     settings = {
-        "model": "gpt-4",
+        "model": "gpt-4-0125-preview",
         "tools": tools,
         "tool_choice": "auto",
     }

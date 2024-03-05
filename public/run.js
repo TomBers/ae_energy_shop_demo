@@ -19,6 +19,9 @@ function addTheMenu(addMenuToFn) {
 }
 
 function addMenuTo(element) {
+    if (document.getElementById("myNav")) {
+        return;
+    }
     menuHtml =
         `<div id="myNav" class="overlay">
 
@@ -41,6 +44,20 @@ function addMenuTo(element) {
 
 
 window.onload = function () {
-    addTheMenu(addMenuTo)
+    // addTheMenu(addMenuTo);
+
+    var observer = new MutationObserver(function (mutations) {
+        // Run your function
+        addTheMenu(addMenuTo);
+    });
+
+    // Configuration of the observer:
+    var config = { attributes: true, childList: true, subtree: true };
+
+    // Pass in the target node (body), as well as the observer options
+    observer.observe(document.body, config);
+
 }
+
+
 
