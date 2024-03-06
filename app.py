@@ -5,7 +5,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.vectorstores.pinecone import Pinecone as PineconeVectorStore
 from langchain.chains import ConversationalRetrievalChain
-from langchain.chat_models import ChatOpenAI
+# from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.memory import ChatMessageHistory, ConversationBufferMemory
 from langchain.docstore.document import Document
 
@@ -90,8 +91,7 @@ async def start():
 
     file = files[0]
 
-    msg = cl.Message(content=f"Processing `{
-                     file.name}`", disable_feedback=True)
+    msg = cl.Message(content=f"Processing `{file.name}`", disable_feedback=True)
     await msg.send()
 
     docsearch = await cl.make_async(get_docsearch)(file)
@@ -104,10 +104,20 @@ async def start():
         chat_memory=message_history,
         return_messages=True,
     )
+    
+    tools = [{
+        "type": "function",
+        "function": {
+            "name": "get_tariffs",
+            "description": "Get available energy tariffs",
+            "parameters": {},
+        }}]
 
+    llm = ChatOpenAI(model_name="gpt-4-0125-preview", temperature=0, streaming=True)
+    llm_with_tools = llm.bind_tools(tools)
+    
     chain = ConversationalRetrievalChain.from_llm(
-        ChatOpenAI(model_name="gpt-3.5-turbo",
-                   temperature=0, streaming=True),
+        llm_with_tools,
         chain_type="stuff",
         retriever=docsearch.as_retriever(),
         memory=memory,
@@ -126,6 +136,7 @@ async def main(message: cl.Message):
     chain = cl.user_session.get("chain")  # type: ConversationalRetrievalChain
     cb = cl.AsyncLangchainCallbackHandler()
     res = await chain.acall(message.content, callbacks=[cb])
+    print(res)
     answer = res["answer"]
     source_documents = res["source_documents"]  # type: List[Document]
 
