@@ -3,6 +3,7 @@ import os
 from openai import AsyncOpenAI
 
 from packages.func_call.funcs import tools, call_tool
+from packages.file_uploads.file_uploads import process_file
 
 from chainlit.playground.providers.openai import stringify_function_call
 import chainlit as cl
@@ -13,29 +14,33 @@ client = AsyncOpenAI(api_key=api_key)
 MAX_ITER = 5
 
 
-# Example dummy function hard coded to return the same weather
-# In production, this could be your backend API or an external API
-
 
 @cl.on_chat_start
 async def start_chat():
-    cl.user_session.set(
-        "message_history",
-        [{"role": "system", "content": "You are a helpful assistant helping people to understand their energy bill."}],
-    )
+    message_history = [{"role": "system", "content": "You are a helpful assistant helping people to understand their energy bill."}]
+    
 
     files = None
     while files is None:
         files = await cl.AskFileMessage(
             content="Please upload your energy bill to get started. We can compare your bill to other tariffs",
             accept=["application/pdf"],
-            max_size_mb=20,
+            max_size_mb=5,
             timeout=180,
         ).send()
 
     file = files[0]
     msg = cl.Message(content=f"Processing `{file.name}`", author="System", disable_feedback=True)
     await msg.send()
+    
+    # Extract text from the PDF and store it in the message history
+    content = await process_file(file)
+    message_history.append({"role": "system", "content": content})
+    
+    cl.user_session.set(
+        "message_history",
+        message_history,
+    )
 
     msg.content = f"`{file.name}` processed. You can now ask questions!"
     await msg.update()
