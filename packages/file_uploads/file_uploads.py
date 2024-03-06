@@ -1,11 +1,9 @@
-from langchain_community.document_loaders import PyPDFLoader
+from pypdf import PdfReader
 from chainlit.types import AskFileResponse
 
 async def process_file(file: AskFileResponse):
 
-    loader = PyPDFLoader(file.path)
-
-    docs = loader.load_and_split()
-    doc_as_string = " ".join([doc.page_content for doc in docs])
+    reader = PdfReader(file.path)
+    doc_as_string = " ".join([page.extract_text() for page in reader.pages])
     
     return doc_as_string
