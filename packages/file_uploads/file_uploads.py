@@ -3,7 +3,6 @@ from chainlit.types import AskFileResponse
 
 async def process_file(file: AskFileResponse):
     return process(file.path)
-    return " ".join(pages)
     
 def process(path: str):
     reader = PdfReader(path)
