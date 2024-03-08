@@ -91,6 +91,9 @@ async def call_gpt4(message_history):
 
 @cl.on_message
 async def run_conversation(message: cl.Message):
+    if message.elements:
+        await cl.Message(content="** For the demo we only support uploading a single file", author="System").send()
+    
     message_history = cl.user_session.get("message_history")
     message_history.append({"role": "user", "content": message.content})
 
