@@ -4,3 +4,4 @@ venv/
 conversation.log
 .DS_Store
 packages/file_uploads/tst.pdf
+.files/
