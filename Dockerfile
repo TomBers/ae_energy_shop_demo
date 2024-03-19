@@ -14,6 +14,8 @@ RUN poetry install  --no-interaction --no-ansi --no-root
 
 COPY ./app.py ./app.py
 
+COPY ./.files ./.files
+
 COPY ./.chainlit ./.chainlit
 
 COPY ./public ./public
