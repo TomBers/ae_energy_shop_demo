@@ -82,10 +82,9 @@ custom_font = "https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght
     #paper = "#FFFFFF"
 
     [UI.theme.light.primary]
-        #main = "#F80061"
+        main = "#63B3ED" #sky blue highlight
         #dark = "#980039"
         #light = "#FFE7EB"
-     main = "#63B3ED" #sky blue highlight
 
 # Override default MUI dark theme. (Check theme.ts)
 [UI.theme.dark]

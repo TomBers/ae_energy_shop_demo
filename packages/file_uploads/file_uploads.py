@@ -1,4 +1,4 @@
-from PyPDF2 import PdfReader # reed changed from  'pypdf'
+from pypdf import PdfReader
 from chainlit.types import AskFileResponse
 
 async def process_file(file: AskFileResponse):
