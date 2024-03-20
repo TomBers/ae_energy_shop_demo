@@ -23,7 +23,12 @@ async def start_chat():
     files = None
     while files is None:
         files = await cl.AskFileMessage(
-            content="Please upload your energy bill to get started. We can compare your bill to other tariffs",
+           # content="Upload your energy bill to simplify energy price comparison. The assistant will digest your energy details and help you identify other available tariffs via <a href="https://theenergyshop.com/" target="_blank">The Energy Shop&apos;s</a>price comparison service.",
+            #content="""Upload your energy bill to simplify energy price comparison. The assistant will digest your energy details and help you identify other available tariffs via <a href="https://theenergyshop.com/" target="_blank">The Energy Shop's</a> price comparison service.""",
+            content="""Upload your energy bill to simplify energy price comparison.  
+                    I can help you analyse your bill and identify other affordable tariffs via [The Energy Shop's](https://theenergyshop.com/) price comparison service.
+                    """,
+            # content="Please upload your energy bill to get started. We can compare your bill to other tariffs",
             accept=["application/pdf"],
             max_size_mb=5,
             timeout=180,

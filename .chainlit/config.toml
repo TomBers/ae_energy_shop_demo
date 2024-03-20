@@ -49,7 +49,7 @@ injected_tabs = [
 ]
 
 # Description of the app and chatbot. This is used for HTML tags.
-# description = ""
+# description = "An AI Assistant to analyse your energy bill and identify other available tariffs."
 
 # Large size content are by default collapsed for a cleaner ui
 default_collapse_content = true
@@ -82,7 +82,7 @@ custom_font = "https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght
     #paper = "#FFFFFF"
 
     [UI.theme.light.primary]
-        #main = "#F80061"
+        main = "#63B3ED" #sky blue highlight
         #dark = "#980039"
         #light = "#FFE7EB"
 
@@ -95,7 +95,7 @@ custom_font = "https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght
         #main = "#F80061"
         #dark = "#980039"
         #light = "#FFE7EB"
-
+    main = "#63B3ED" #sky blue highlight
 
 [meta]
 generated_by = "1.0.301"
