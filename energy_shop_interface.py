@@ -5,12 +5,13 @@ import json
 from dotenv import load_dotenv, dotenv_values
     
 def get_tariffs(body):
+    
+    return "Tariffs obtained successfully"
     load_dotenv()
     
     baseURL = os.getenv("ENERGY_SHOP_BASE_URL")
     key = os.getenv("ENERGY_SHOP_API_KEY")
     
-    print(baseURL)
 
     headers = {
         'Content-Type': 'application/json',

@@ -22,7 +22,6 @@ class tariffs(BaseModel):
     eSevenUsage: int = Field(..., description="E7 usage")
     
     def all_tariffs(self):
-        print(self.dict())
         return get_tariffs(self.dict())
 
 
