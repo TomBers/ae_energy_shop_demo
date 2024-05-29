@@ -3,6 +3,10 @@ import os
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers.openai_tools import PydanticToolsParser
 
+from langchain_core.prompts import PromptTemplate
+
+from packages.file_uploads.file_uploads import process_file_from_path
+
 from langchain_core.pydantic_v1 import BaseModel, Field
 
 from energy_shop_interface import get_tariffs
@@ -32,10 +36,15 @@ tools = [tariffs]
 
 llm_with_tools = llm.bind_tools(tools)
 
-query = "What are the tariffs available for a service type of electricity, with a payment method MDD, an MPAN of 1610027165020, a gas usage of 1000, a gas annual bill of 1000, an electricity usage of 1000, an electricity annual bill of 1000, and an E7 usage of 1000?"
+file_path = "bill.pdf"
+doc_as_string = process_file_from_path(file_path)
 
-chain = llm_with_tools | PydanticToolsParser(first_tool_only=True, tools=tools)
-res = chain.invoke(query)
+prompt = PromptTemplate(
+    template="Extract the following parameters: service type, payment method, MPAN, gas usage, gas annual bill, electricity usage, electricity annual bill, E7 usage from {context} and use them to get all tariffs available for the service type",
+    input_variables=["context"],
+)
+chain = prompt | llm_with_tools | PydanticToolsParser(first_tool_only=True, tools=tools)
+res = chain.invoke({"context": doc_as_string})
 # print(res)
 print(res.all_tariffs())
     

@@ -5,7 +5,7 @@ import json
 from dotenv import load_dotenv, dotenv_values
     
 def get_tariffs(body):
-    
+    print(body)
     return "Tariffs obtained successfully"
     load_dotenv()
     
