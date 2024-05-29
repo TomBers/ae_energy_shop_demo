@@ -1,17 +1,24 @@
 
 import os
+import json
 from openai import AsyncOpenAI
 
 from packages.func_call.funcs import tools, call_tool
 from packages.file_uploads.file_uploads import process_file
 
-from chainlit.playground.providers.openai import stringify_function_call
+from langchain_core.output_parsers import StrOutputParser
+from langchain.prompts import  ChatPromptTemplate
+from langchain_core.runnables import RunnableParallel, RunnablePassthrough
+
+from langchain_openai import ChatOpenAI
+
+# from chainlit.playground.providers.openai import stringify_function_call
 import chainlit as cl
+
+from energyshop import get_tariffs_from_bill
 
 api_key = os.environ.get("OPENAI_API_KEY")
 client = AsyncOpenAI(api_key=api_key)
-
-MAX_ITER = 5
 
 
 
@@ -39,75 +46,56 @@ async def start_chat():
     await msg.send()
     
     # Extract text from the PDF and store it in the message history
-    content = await process_file(file)
-    message_history.append({"role": "system", "content": content})
+    context = await process_file(file)
     
-    cl.user_session.set(
-        "message_history",
-        message_history,
+    # TODO - TypeError: Expected a Runnable, callable or dict.Instead got an unsupported type: <class 'requests.models.Response'>
+    # Convert response to a dict
+    
+    tariffs = get_tariffs_from_bill(context)
+
+    # print(tariffs)
+    # message_history.append({"role": "system", "content": tariffs})
+    
+    # cl.user_session.set(
+    #     "message_history",
+    #     message_history,
+    # )
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are an expert on the energy market, you are advising users on new energy tariffs, which you have access to."),
+        ("system", "Answer the question based only on the following tariffs: {context}"),
+        ("user", "Question: {question}")
+    ])
+
+
+    model = ChatOpenAI(model="gpt-4-0125-preview")
+    output_parser = StrOutputParser()
+
+    # TODO Expected a Runnable, callable or dict.Instead got an unsupported type: <class 'str'>
+    # Convert the response to a string and add it to the messages
+    setup_and_retrieval = RunnableParallel(
+        {"context": {f"context_{i}": json.dumps(tariff) for i, tariff in enumerate(tariffs)},
+         "question": RunnablePassthrough()}
     )
+    # TODO - FIX above
+    
+    chain = setup_and_retrieval | prompt | model | output_parser
+    cl.user_session.set("chain", chain)
 
     msg.content = f"`{file.name}` processed. You can now ask questions!"
     await msg.update()
 
 
-@cl.step(type="llm")
-async def call_gpt4(message_history):
-    settings = {
-        "model": "gpt-4-0125-preview",
-        "tools": tools,
-        "tool_choice": "auto",
-    }
 
-    cl.context.current_step.generation = cl.ChatGeneration(
-        provider="openai-chat",
-        messages=[
-            cl.GenerationMessage(
-                formatted=m["content"], name=m.get("name"), role=m["role"]
-            )
-            for m in message_history
-        ],
-        settings=settings,
-    )
-
-    response = await client.chat.completions.create(
-        messages=message_history, **settings
-    )
-
-    message = response.choices[0].message
-
-    for tool_call in message.tool_calls or []:
-        if tool_call.type == "function":
-            await call_tool(tool_call, message_history)
-
-    if message.content:
-        cl.context.current_step.generation.completion = message.content
-        cl.context.current_step.output = message.content
-
-    elif message.tool_calls:
-        completion = stringify_function_call(message.tool_calls[0].function)
-
-        cl.context.current_step.generation.completion = completion
-        cl.context.current_step.language = "json"
-        cl.context.current_step.output = completion
-
-    return message
 
 
 @cl.on_message
-async def run_conversation(message: cl.Message):
-    if message.elements:
-        await cl.Message(content="** For the demo we only support uploading a single file", author="System").send()
+async def main(message: cl.Message):
+    msg = cl.Message(content="")
+    await msg.send()
     
-    message_history = cl.user_session.get("message_history")
-    message_history.append({"role": "user", "content": message.content})
+    chain = cl.user_session.get("chain")
+    for chunk in chain.stream(message.content):  
+        await msg.stream_token(chunk)
+    
 
-    cur_iter = 0
-
-    while cur_iter < MAX_ITER:
-        message = await call_gpt4(message_history)
-        if not message.tool_calls:
-            await cl.Message(content=message.content, author="Answer").send()
-            break
-
-        cur_iter += 1
