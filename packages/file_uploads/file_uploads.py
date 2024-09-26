@@ -2,8 +2,8 @@ from pypdf import PdfReader
 from chainlit.types import AskFileResponse
 
 async def process_file(file: AskFileResponse):
-
-    reader = PdfReader(file.path)
-    doc_as_string = " ".join([page.extract_text() for page in reader.pages])
+    return process(file.path)
     
-    return doc_as_string
+def process(path: str):
+    reader = PdfReader(path)
+    return " ".join([page.extract_text() for page in reader.pages])
